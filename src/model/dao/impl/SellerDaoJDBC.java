@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import db.DB;
 import db.DbException;
@@ -33,12 +36,14 @@ public class SellerDaoJDBC implements SellerDao {
 	}
 
 	@Override
-	public Seller findById(Integer id) {//encontrar o objeto passando o id como parâmetro
+	//encontrar o objeto passando o id como parâmetro
+	public Seller findById(Integer id) {
 		
 		PreparedStatement st = null;
 		ResultSet rs = null;
 		try {
 			st = conn.prepareStatement(
+					//consulta SQL
 					"SELECT seller.*,department.Name as DepName "
 					+ "FROM seller INNER JOIN department "
 					+ "ON seller.DepartmentId = department.Id "
@@ -47,10 +52,9 @@ public class SellerDaoJDBC implements SellerDao {
 			st.setInt(1, id);
 			rs = st.executeQuery();
 			
-			// se rs.next() for igual a "0", vai retornar nulo
+			// se rs.next() "próximo" for igual a "0", vai retornar nulo
 			if(rs.next()) {
 				
-				//instância do Departamento e Seller
 				Department dep = instantiateDepartment(rs);
 				Seller obj = instantiateSeller(rs, dep);
 				return obj;
@@ -66,10 +70,12 @@ public class SellerDaoJDBC implements SellerDao {
 			DB.closeResultSet(rs);
 		}
 	}
-
+	
+	//função Seller para findById
 	private Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException {
-		
+		//instanciando Seller
 		Seller obj = new Seller();
+		//setando os valores Seller "obj"
 		obj.setId(rs.getInt("Id"));
 		obj.setName(rs.getString("Name"));
 		obj.setEmail(rs.getString("Email"));
@@ -78,11 +84,12 @@ public class SellerDaoJDBC implements SellerDao {
 		obj.setDepartment(dep);
 		return obj;
 	}
-
+	
+	//função Department findById
 	private Department instantiateDepartment(ResultSet rs) throws SQLException {
 		Department dep = new Department(); 
 		
-		//setando os valores do Depatamento
+		//setando os valores do Depatamento "dep"
 		dep.setId(rs.getInt("DepartmentId")); 
 		dep.setName(rs.getString("DepName"));
 		
@@ -93,6 +100,53 @@ public class SellerDaoJDBC implements SellerDao {
 	public List<Seller> findAll() {
 		
 		return null;
+	}
+
+	@Override
+	public List<Seller> findByIdDepartment(Department department) {
+		
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		try {
+			st = conn.prepareStatement(
+					//busca sql
+					"SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department "
+					+ "ON seller.DepartmentId = department.Id "
+					+ "WHERE DepartmentId = ? "
+					+ "ORDER BY Name");
+			
+			st.setInt(1, department.getId());
+			
+			rs = st.executeQuery();
+			
+			List<Seller> list = new ArrayList<>();
+			
+			//map vazio
+			Map<Integer, Department> map = new HashMap<>();
+			
+			// percorrer o  rs enquanto next() "próximo" for igual a "0", vai retornar nulo
+			while(rs.next()) {
+				
+				Department dep = map.get(rs.getInt("DepartmentId"));
+				
+				if (dep == null) {
+					dep = instantiateDepartment(rs);
+					map.put(rs.getInt("DepartmentId"), dep);
+				}
+				
+				Seller obj = instantiateSeller(rs, dep);
+				list.add(obj);
+			}
+			return list; 
+		}
+		catch(SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 }
