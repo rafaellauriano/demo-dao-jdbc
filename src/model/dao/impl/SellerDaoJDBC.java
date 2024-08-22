@@ -99,7 +99,47 @@ public class SellerDaoJDBC implements SellerDao {
 	@Override
 	public List<Seller> findAll() {
 		
-		return null;
+
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		
+		try {
+			st = conn.prepareStatement(
+					//busca sql
+					"SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department "
+					+ "ON seller.DepartmentId = department.Id "
+					+ "ORDER BY Name");
+			
+			rs = st.executeQuery();
+			
+			List<Seller> list = new ArrayList<>();
+			
+			//map vazio
+			Map<Integer, Department> map = new HashMap<>();
+			
+			// percorrer o  rs enquanto next() "próximo" for igual a "0", vai retornar nulo
+			while(rs.next()) {
+				
+				Department dep = map.get(rs.getInt("DepartmentId"));
+				
+				if (dep == null) {
+					dep = instantiateDepartment(rs);
+					map.put(rs.getInt("DepartmentId"), dep);
+				}
+				
+				Seller obj = instantiateSeller(rs, dep);
+				list.add(obj);
+			}
+			return list; 
+		}
+		catch(SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 	@Override
@@ -107,6 +147,7 @@ public class SellerDaoJDBC implements SellerDao {
 		
 		PreparedStatement st = null;
 		ResultSet rs = null;
+		
 		try {
 			st = conn.prepareStatement(
 					//busca sql
@@ -122,7 +163,7 @@ public class SellerDaoJDBC implements SellerDao {
 			
 			List<Seller> list = new ArrayList<>();
 			
-			//map vazio
+			//map para controlar a não repetição do departamento
 			Map<Integer, Department> map = new HashMap<>();
 			
 			// percorrer o  rs enquanto next() "próximo" for igual a "0", vai retornar nulo
@@ -130,6 +171,7 @@ public class SellerDaoJDBC implements SellerDao {
 				
 				Department dep = map.get(rs.getInt("DepartmentId"));
 				
+				//se o departamento não existir, vou estânciar e salvar dentro do map
 				if (dep == null) {
 					dep = instantiateDepartment(rs);
 					map.put(rs.getInt("DepartmentId"), dep);
